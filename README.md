@@ -1,81 +1,124 @@
 # Paytriq — Campus Sponsorship Dealmaker
 
-> Autonomous 6-agent mesh that finds sponsors, scores fit, negotiates, drafts MoUs, and sends outreach — with human approval gates.
+> 6-agent mesh that finds sponsors, scores fit, negotiates, drafts MoUs, checks compliance, and audits ROI — with human approval gates.
 
 ## 6-Agent Mesh
 
 | ID | Agent | Role |
 |----|-------|------|
 | A1 | Discovery & Intelligence | Ingests event, queries Maps, ranked prospect list |
-| A2 | Match | Scores sponsor ↔ event fit (budget, audience, category) |
+| A2 | Pricing & Proposal | Bespoke decks + tiers, micro-tier revision on pushback |
 | A3 | Outreach & Negotiation | Gmail sequences, intent classification, meeting scheduling |
 | A4 | Contract & Onboarding | Drafts localized MoU PDF from final terms |
 | A5 | Pre-Event Compliance | Scans URLs/handles, vision-scrape, WhatsApp/Email nudge |
 | A6 | Post-Event ROI Audit | Gemini Vision footfall/banner count + ROI report + learning update to A1 |
 
-**Orchestration:** Supervisor-worker + blackboard (`EventState`). Supervisor routes tasks, enforces conditional edges and HITL interrupts. No agent talks peer-to-peer — all reads/writes go through `EventState`.
+**Orchestration:** Supervisor-worker + blackboard (`EventState`). Supervisor routes tasks, enforces conditional edges and HITL interrupts.
 
-**Loops:**
-- Loop A (Discovery): A1 → A2 → A1 — rescout if fit-pool < threshold
-- Loop B (Negotiation): A3 → HITL → A3 — counter-offer iterations
-- Loop C (Grounding): A4 → A5 → A4 — redraft until verification passes
+**Coordination loops:**
+- Loop A (Negotiation): A3 classifies pushback -> A2 micro-tier -> A3 reply
+- A3 Yes -> A4 MoU from A2 final terms -> A3 send for signature
+- Loop B (Nudge): A5 scans promised logo, pings organizer if missing
+- Loop C (Learning): A6 updates DB, A1 ranking weights for next event
 
 See `docs/Design_Document.md` for full architecture + mermaid diagram.
 
-## Quickstart
+## Prerequisites
 
+- Python 3.10+
+- No API keys needed (runs offline with mocks). Optional: `GEMINI_API_KEY`, `GOOGLE_MAPS_KEY` for live LLM/Maps.
+
+## Steps to Run
+
+### 1. Clone and install
 ```bash
+git clone https://github.com/adroitathena2/Paytriq-trial
 cd Paytriq-trial
 pip install -r requirements.txt
-pytest
-uvicorn backend.main:app --reload
-# in a new terminal / browser:
-open frontend/index.html
-# Windows: start frontend/index.html
 ```
 
-Requirements: Python 3.10+, `GEMINI_API_KEY`, `GMAIL_USER` + `GMAIL_APP_PASSWORD` (or dry-run mode), `MAPS_API_KEY` (optional — JSON fallback included).
+### 2. Run tests (15 tests)
+```bash
+pytest -q
+# expected: 15 passed
+```
+
+### 3. Run offline full demo (no server)
+```bash
+python scripts/run_demo.py
+# prints: 11 brands, 5 proposals, 5 threads, MoU, compliance_score, ROI
+```
+
+### 4. Regenerate execution trace (for CA3 Section A evidence)
+```bash
+python scripts/generate_trace.py
+# writes artifacts/trace_run1.jsonl (14 steps, Loops A/B/C)
+```
+
+### 5. Run API server
+```bash
+uvicorn backend.main:app --reload --port 8000
+# health: http://localhost:8000/health
+# docs: http://localhost:8000/docs
+```
+
+### 6. Use the UI
+Open `frontend/index.html` in a browser (double-click, or `start frontend/index.html` on Windows).
+- Prefill is TechFest Pune, 5000 footfall.
+- Step 1 Create Event -> Step 2 Discovery -> Step 3 Proposal -> Step 4 approve + Send + Simulate pushback/yes -> Step 5 MoU + Compliance -> Step 6 ROI.
+- API base defaults to `http://localhost:8000`. Keep the server running.
+
+### 7. Key API calls (curl)
+```bash
+curl http://localhost:8000/health
+curl -X POST http://localhost:8000/api/event -H "Content-Type: application/json" -d @artifacts/input_sample.json
+# copy event_id from response, then:
+curl -X POST http://localhost:8000/api/propose -H "Content-Type: application/json" -d "{\"event_id\":\"<id>\"}"
+curl -X POST http://localhost:8000/api/outreach/send -H "Content-Type: application/json" -d "{\"event_id\":\"<id>\",\"approve\":true}"
+# simulate sponsor reply (pushback -> A2 revise, yes -> A4 MoU):
+curl -X POST http://localhost:8000/api/gmail/webhook -H "Content-Type: application/json" -d "{\"event_id\":\"<id>\",\"from_brand\":\"Cafe Brewo\",\"body\":\"love it but only half budget\"}"
+curl -X POST http://localhost:8000/api/contract/mou -H "Content-Type: application/json" -d "{\"event_id\":\"<id>\",\"brand\":\"Cafe Brewo\"}"
+curl -X POST http://localhost:8000/api/compliance/check -H "Content-Type: application/json" -d "{\"event_id\":\"<id>\"}"
+curl -X POST http://localhost:8000/api/audit/roi -H "Content-Type: application/json" -d "{\"event_id\":\"<id>\"}"
+```
 
 ## Live Demo — 5-Min Script
 
-| Time | Step | Command / Action |
-|------|------|------------------|
-| 0:00–0:45 | Intro + problem | "Clubs lose weeks cold-mailing shops. Paytriq closes sponsors in minutes." Show `frontend/index.html`. |
-| 0:45–1:45 | Create event | Fill event form (name, footfall, budget, category) → POST `/api/events`. Show `EventState` JSON. |
-| 1:45–2:45 | Scout + Match (Loop A) | Click "Find Sponsors" → POST `/api/sponsors/scout` → POST `/api/match`. Show ranked sponsor cards with fit scores. |
-| 2:45–3:30 | Negotiate (Loop B) | Select sponsor → POST `/api/negotiate`. Show offer, simulate counter, show revised offer. Highlight HITL approve gate. |
-| 3:30–4:15 | MoU (Loop C) | Click "Draft MoU" → POST `/api/mou/draft`. Show MoU preview, Verifier checklist pass. Click Approve → POST `/api/approvals`. |
-| 4:15–5:00 | Send + close | Click "Send" → POST `/api/outreach/send` (dry-run if no creds). Show Gmail log + audit trail. Q&A. |
+| Time | Step | Action |
+|------|------|--------|
+| 0:00-0:45 | Intro | Show UI + problem: manual mails 4.8% reply |
+| 0:45-1:45 | Create + Discover | Create event, show 11 ranked leads with fit-scores |
+| 1:45-2:45 | Propose | Show brand-specific PDF tiers |
+| 2:45-3:30 | Negotiate (Loop A) | Simulate pushback, show micro-tier revise, then Yes -> MoU |
+| 3:30-4:15 | Comply (Loop B) | Show missing-logo nudge |
+| 4:15-5:00 | Audit (Loop C) | Show ROI report + A1 weight update. Q&A |
 
-Fallback if offline: run `pytest` to show Loop A/B/C unit tests passing + open cached `frontend/index.html` demo data.
+Fallback offline: `pytest` + `python scripts/run_demo.py` + cached `artifacts/trace_run1.jsonl`.
+
+## API List (actual)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/health` | ok + event count |
+| POST | `/api/event` | Create event + A1 discovery |
+| POST | `/api/propose` | A2 proposals |
+| POST | `/api/outreach/send` | A3 send, requires `approve:true` else gated |
+| POST | `/api/gmail/webhook` | Incoming reply -> A2 revise or A4 MoU |
+| POST | `/api/contract/mou` | A4 MoU PDF |
+| POST | `/api/compliance/check` | A5 check + nudge |
+| POST | `/api/audit/roi` | A6 ROI + learning |
+| GET | `/api/state?event_id=` | EventState snapshot |
 
 ## Architecture Summary
 
 ```
-frontend (React/index.html) → FastAPI (backend/main.py) → Supervisor → A1..A6 → EventState (blackboard)
-Tools: Google Maps, Gmail API, Playwright, Gemini Vision
-Memory: EventState (short-term blackboard) + JSON/Supabase deal history (long-term)
-HITL gates: approve before send / counter / MoU sign-off
+frontend/index.html -> FastAPI backend/main.py -> Supervisor (graph.py) -> A1..A6 -> EventState
+Tools: Maps, Gmail API, Playwright hook, Gemini Vision (all with offline fallback)
+Memory: EventState (short-term) + JSON learning store (long-term)
+HITL: approve before send / counter / MoU
 ```
 
-Custom lightweight graph runtime mirrors LangGraph semantics (nodes, conditional edges, interrupts) with zero infra cost — no LangSmith / LangGraph Server needed.
-
-## API List
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/events` | Create event → initializes `EventState` |
-| GET | `/api/events/{id}` | Get event + state snapshot |
-| POST | `/api/sponsors/scout` | A1 Scout — discover sponsors (Maps/Playwright) |
-| POST | `/api/match` | A2 Match — score + rank sponsors |
-| POST | `/api/negotiate` | A3 Negotiator — generate offer / evaluate counter |
-| POST | `/api/mou/draft` | A4 MoU Drafter — draft MoU from deal terms |
-| POST | `/api/verify` | A5 Verifier — compliance check |
-| POST | `/api/outreach/send` | A6 Outreach — send approved email (HITL-gated) |
-| POST | `/api/approvals` | Approve / reject pending action (send, counter, MoU) |
-| GET | `/api/audit/{event_id}` | Full audit trail from `EventState` |
-
-All mutating send/counter/MoU routes return `status: pending_approval` until `/api/approvals` confirms.
+Custom lightweight graph runtime mirrors LangGraph semantics (nodes, conditional edges, interrupts) with zero infra cost.
 
 ## Team
 
@@ -89,6 +132,5 @@ All mutating send/counter/MoU routes return `status: pending_approval` until `/a
 
 - Design Document: `docs/Design_Document.md`
 - Synopsis: `docs/Synopsis.md`
-- Frontend: `frontend/index.html`
-- Backend entry: `backend/main.py`
-- Tests: `pytest`
+- Input sample: `artifacts/input_sample.json`
+- Trace: `artifacts/trace_run1.jsonl`
