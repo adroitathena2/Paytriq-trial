@@ -8,6 +8,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from backend.state import STORE, LEARNING, create_event, get_event, list_events, record_learning
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+import pathlib
 
 app = FastAPI(title="Paytriq API", version="0.1.0")
 
@@ -18,6 +21,19 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Serve frontend/ so http://127.0.0.1:8000/frontend/index.html works
+try:
+    _front = pathlib.Path(__file__).resolve().parent.parent / "frontend"
+    if _front.is_dir():
+        app.mount("/frontend", StaticFiles(directory=str(_front), html=True), name="frontend")
+
+    @app.get("/app", include_in_schema=False)
+    def _app():
+        idx = _front / "index.html"
+        return FileResponse(str(idx)) if idx.exists() else {"error": "frontend/index.html missing"}
+except Exception:
+    pass
 
 
 # ---------- Pydantic request models ----------
