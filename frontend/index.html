@@ -95,10 +95,21 @@ const api = () => $('apiBase').value.replace(/\/$/, '');
 function show(o){ $('json').textContent = JSON.stringify(o, null, 2); }
 function needEvent(){ const e = $('eventId').textContent; if(!e || e==='—'){ alert('Create event first (Step 1)'); return null;} return e; }
 
+async function apiFetch(path, body){
+  const url = api() + path;
+  try{
+    const r = await fetch(url, {method: body ? 'POST' : 'GET', headers:{'Content-Type':'application/json'}, body: body ? JSON.stringify(body) : undefined});
+    const j = await r.json().catch(()=>({error:'non-JSON response, is backend running at '+url+'?'}));
+    if(!r.ok && !j.error) j.error = 'HTTP '+r.status+' from '+url;
+    return j;
+  }catch(e){
+    return {error:'Cannot reach backend at '+url+'. Run: uvicorn backend.main:app --port 8000  ('+e.message+')'};
+  }
+}
+
 async function createEvent(){
   const body = { name: $('evName').value, location: $('evLoc').value, footfall: +$('evFoot').value, date: $('evDate').value, audience: $('evAud').value };
-  const r = await fetch(api() + '/api/event', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
-  const j = await r.json(); show(j);
+  const j = await apiFetch('/api/event', body); show(j);
   if(j.event){ $('eventId').textContent = j.event.event_id; renderBrands(j.discovery || []); }
 }
 function renderBrands(list){
@@ -111,8 +122,7 @@ function selectedBrands(){ return [...document.querySelectorAll('.brandCk:checke
 async function propose(){
   const eid = needEvent(); if(!eid) return;
   const brands = selectedBrands();
-  const r = await fetch(api() + '/api/propose', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({event_id: eid, brands})});
-  const j = await r.json(); show(j);
+  const j = await apiFetch('/api/propose', {event_id: eid, brands}); show(j);
   $('proposals').innerHTML = (j.proposals||[]).map(p =>
     `<div class="border rounded p-2"><b>${p.brand}</b> · ${p.tier} · <b>Rs ${Number(p.amount_inr).toLocaleString('en-IN')}</b> (fit ${p.fit_score})<br/><span class="text-slate-600">${p.pitch}</span><br/><span class="text-slate-500">Deliverables: ${(p.deliverables||[]).join(' · ')}</span>${p.revision_note?`<br/><span class="text-amber-600">${p.revision_note}</span>`:''}</div>`
   ).join('');
@@ -121,8 +131,7 @@ async function propose(){
 
 async function sendOutreach(){
   const eid = needEvent(); if(!eid) return;
-  const r = await fetch(api() + '/api/outreach/send', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({event_id: eid, approve: $('approve').checked, brands: selectedBrands()})});
-  const j = await r.json(); show(j);
+  const j = await apiFetch('/api/outreach/send', {event_id: eid, approve: $('approve').checked, brands: selectedBrands()}); show(j);
   $('outreach').innerHTML = (j.error?`<div class="text-red-600">${j.error}</div>`:'') + `<div>sent: ${(j.sent||[]).map(s=>s.brand).join(', ')||'—'}</div>`;
 }
 
@@ -132,8 +141,7 @@ async function simReply(kind){
   const body = kind === 'pushback'
     ? 'Hi, price too high for our budget, please reduce/discount and renegotiate.'
     : 'Hi, yes! We are interested, agree — let us sign the deal and proceed.';
-  const r = await fetch(api() + '/api/gmail/webhook', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({event_id: eid, from_brand: brand, subject: 'Re: Sponsorship', body})});
-  const j = await r.json(); show(j);
+  const j = await apiFetch('/api/gmail/webhook', {event_id: eid, from_brand: brand, subject: 'Re: Sponsorship', body}); show(j);
   $('outreach').innerHTML += `<div class="mt-1">webhook → <b>${j.route}</b> (${brand})</div>`;
   if(j.revised) $('proposals').innerHTML += `<div class="border border-amber-400 rounded p-2">Revised ${j.revised.brand}: Rs ${Number(j.revised.amount_inr).toLocaleString('en-IN')} — ${j.revised.revision_note}</div>`;
   if(j.mou) $('mou').innerHTML += `<div>MoU ${j.mou.mou_id} · ${j.mou.brand} · Rs ${Number(j.mou.amount_inr).toLocaleString('en-IN')} · file ${j.mou.file||''}</div>`;
@@ -142,37 +150,33 @@ async function simReply(kind){
 async function makeMou(){
   const eid = needEvent(); if(!eid) return;
   const brand = $('mouBrand').value || selectedBrands()[0] || 'boAt';
-  const r = await fetch(api() + '/api/contract/mou', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({event_id: eid, brand})});
-  const j = await r.json(); show(j);
+  const j = await apiFetch('/api/contract/mou', {event_id: eid, brand}); show(j);
   if(j.mou) $('mou').innerHTML += `<div>MoU ${j.mou.mou_id} · ${j.mou.brand} · Rs ${Number(j.mou.amount_inr).toLocaleString('en-IN')} · file ${j.mou.file||''}</div>`;
 }
 
 async function checkCompliance(){
   const eid = needEvent(); if(!eid) return;
-  const r = await fetch(api() + '/api/compliance/check', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({event_id: eid, brand: $('mouBrand').value||undefined})});
-  const j = await r.json(); show(j);
+  const j = await apiFetch('/api/compliance/check', {event_id: eid, brand: $('mouBrand').value||undefined}); show(j);
   $('mou').innerHTML += `<div>Compliance: ${j.passed?'✅ PASS':'❌ FAIL'} score ${j.score} — ${(j.issues||[]).join('; ')||'clean'}</div>`;
 }
 
 async function nudge(){
   // Nudge = harmless re-check: calls send WITHOUT approve to show the gate holds
   const eid = needEvent(); if(!eid) return;
-  const r = await fetch(api() + '/api/outreach/send', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({event_id: eid, approve: false})});
-  const j = await r.json(); show(j);
+  const j = await apiFetch('/api/outreach/send', {event_id: eid, approve: false}); show(j);
   $('mou').innerHTML += `<div class="text-slate-500">Nudge: gate held — ${j.error||'no send without approval (expected)'}</div>`;
 }
 
 async function roi(){
   const eid = needEvent(); if(!eid) return;
-  const r = await fetch(api() + '/api/audit/roi', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({event_id: eid})});
-  const j = await r.json(); show(j);
+  const j = await apiFetch('/api/audit/roi', {event_id: eid}); show(j);
   $('roi').innerHTML = `<div>ROI ${j.roi?.roi} · sponsored Rs ${Number(j.roi?.total_sponsored_inr||0).toLocaleString('en-IN')} · leads ${j.roi?.leads}</div><div class="text-slate-500">learning runs=${j.learning?.runs} avg_roi=${j.learning?.avg_roi}</div>`;
 }
 
 async function refreshState(){
   const eid = $('eventId').textContent;
   const url = api() + '/api/state' + ((eid && eid !== '—') ? ('?event_id=' + eid) : '');
-  const r = await fetch(url); show(await r.json());
+  try{ const r = await fetch(url); show(await r.json()); }catch(e){ show({error:'Cannot reach backend at '+url+'. Run uvicorn backend.main:app --port 8000 ('+e.message+')'}); }
 }
 </script>
 </body>
