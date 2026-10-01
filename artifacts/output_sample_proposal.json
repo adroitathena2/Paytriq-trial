@@ -1,0 +1,44 @@
+{
+  "proposal_id": "PROP-TF2026-001",
+  "event_name": "TechFest 2026",
+  "event_location": "Pune, Maharashtra, India",
+  "brand": "ByteLearn EdTech",
+  "brand_details": {
+    "name": "ByteLearn EdTech",
+    "category": "edtech",
+    "distance_km": 4.2,
+    "budget_inr": 60000,
+    "contact_email": "partnerships@bytelearn.in"
+  },
+  "tier": "Gold Sponsor",
+  "price_inr": 32000,
+  "amount_inr": 32000,
+  "original_amount_inr": 45000,
+  "revised_price_inr": 32000,
+  "revised": true,
+  "revision_note": "Discounted 29% from Rs 45,000 after sponsor pushback: half budget.",
+  "revision_reason": "brand pushback: half budget; rescored tier Silver+workshop",
+  "fit_score": 87.5,
+  "fit_breakdown": {
+    "category_match": 30.0,
+    "audience_match": 24.5,
+    "distance_score": 18.0,
+    "budget_fit": 15.0
+  },
+  "deliverables": [
+    "Stage side-panel branding + MC shoutouts",
+    "Logo on posters & event website",
+    "8x8 stall + sampling permission",
+    "1 Instagram reel + stories + push notification",
+    "Extra: logo on entry archway (goodwill add-on)"
+  ],
+  "pitch": "Dear ByteLearn EdTech team, TechFest 2026 (Pune) expects 5000 footfall. As Gold Sponsor at Rs 32,000, you get: Stage side-panel branding + MC shoutouts; Logo on posters & event website; 8x8 stall + sampling permission. Campus audiences convert 2-4% on sampling + QR offers.",
+  "cover_letter": "Dear ByteLearn EdTech team, TechFest 2026 (Pune) expects 5000 footfall. As Gold Sponsor at Rs 32,000, you get stage + stall + reels. Campus audiences convert 2-4%.",
+  "outreach": {
+    "subject": "Sponsorship Proposal: TechFest 2026 x ByteLearn (5000 tech students, Pune)",
+    "thread_id": "thread_demo_001",
+    "status": "revised_sent"
+  },
+  "terms": "Payment: 50% advance within 7 days of signing, 50% within 7 days post-event. Logo usage: sponsor logo on agreed collateral only. Cancellation: 14-day notice.",
+  "created_by": "A3_negotiator"
+}

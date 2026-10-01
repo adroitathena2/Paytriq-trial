@@ -1,0 +1,10 @@
+__pycache__/
+.venv/
+*.pyc
+.env
+*.log
+outbox/
+# *.pdf kept out of git (generated MoUs); uncomment to keep:
+# *.pdf
+node_modules/
+dist/

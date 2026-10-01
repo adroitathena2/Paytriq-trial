@@ -1,0 +1,11 @@
+# Render config for Paytriq backend (FastAPI + uvicorn)
+# If using render.yaml blueprint, this file is auto-detected.
+services:
+  - type: web
+    name: paytriq-api
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0

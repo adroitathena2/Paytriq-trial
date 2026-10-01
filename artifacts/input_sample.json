@@ -1,0 +1,32 @@
+{
+  "event_name": "TechFest 2026",
+  "organizer": "Pune Collegiate Tech Council",
+  "location": "Pune, Maharashtra, India",
+  "venue": "COEP Ground, Shivajinagar, Pune",
+  "dates": ["2026-02-14", "2026-02-15"],
+  "footfall_expected": 5000,
+  "footfall_breakup": {
+    "day1": 2200,
+    "day2": 2800
+  },
+  "audience": {
+    "age_range": "18-24",
+    "profile": "engineering students, early tech adopters",
+    "interests": ["tech", "gaming", "startups", "coding", "gadgets"],
+    "gender_split": {"male": 0.62, "female": 0.33, "other": 0.05}
+  },
+  "categories_wanted": ["tech", "edtech", "fintech", "gaming", "beverages", "mobility"],
+  "budget_range_inr": [20000, 100000],
+  "deliverables_offered": [
+    "stage_banner",
+    "stall_10x10",
+    "logo_on_poster",
+    "instagram_reel",
+    "push_notification",
+    "workshop_slot"
+  ],
+  "contact": {
+    "name": "Demo Organizer",
+    "email": "organizer@techfest2026.in"
+  }
+}

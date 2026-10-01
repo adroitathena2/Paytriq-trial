@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+pydantic
+pytest
+python-multipart
+reportlab
+google-genai
+httpx
+# NOTE: langgraph / supabase are optional extensions, not required for offline trial.

@@ -1,0 +1,33 @@
+{
+  "event_name": "TechFest 2026",
+  "event_id": "evt_demo_techfest2026",
+  "proposal_id": "PROP-TF2026-001",
+  "brand": "ByteLearn EdTech",
+  "footfall": 5000,
+  "investment_inr": 32000,
+  "spend_inr": 4800,
+  "total_sponsored_inr": 32000,
+  "leads": 650,
+  "pipeline_value_inr": 97500,
+  "estimates": {
+    "footfall": 5000,
+    "impressions": 18000,
+    "engaged_leads": 650,
+    "conversion_rate": 0.04,
+    "customers": 26,
+    "avg_order_value_inr": 4500
+  },
+  "revenue_inr": 117000,
+  "roi": 26.56,
+  "roi_multiple": 3.66,
+  "roi_pct": 265.6,
+  "compliance_pct": 100.0,
+  "deals_closed": 1,
+  "threads": 5,
+  "footfall_estimate": 5000,
+  "assumptions": "18-24 tech audience; 13% stall conversion to lead; 4% lead-to-customer; AOV Rs.4500 course trial. Heuristic offline ROI: leads=3% footfall default; value Rs150/lead.",
+  "risk_flags": ["rain contingency for outdoor stall", "exam-season overlap"],
+  "generated_by": "A1/A6_roi",
+  "computed_at": 1770967200,
+  "note": "Heuristic offline ROI: leads=3% footfall default; value Rs150/lead."
+}
