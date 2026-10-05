@@ -63,10 +63,11 @@ uvicorn backend.main:app --reload --port 8000
 ```
 
 ### 6. Use the UI
-Open `frontend/index.html` in a browser (double-click, or `start frontend/index.html` on Windows).
+Open `http://localhost:8000/app` in a browser (served by the backend — do NOT
+double-click `frontend/index.html` via `file://`, buttons will fail to reach the API).
 - Prefill is TechFest Pune, 5000 footfall.
 - Step 1 Create Event -> Step 2 Discovery -> Step 3 Proposal -> Step 4 approve + Send + Simulate pushback/yes -> Step 5 MoU + Compliance -> Step 6 ROI.
-- API base defaults to `http://localhost:8000`. Keep the server running.
+- API base auto-uses the page origin when served from `/app`. Green banner = connected.
 
 ### 7. Key API calls (curl)
 ```bash

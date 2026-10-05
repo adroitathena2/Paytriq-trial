@@ -14,11 +14,12 @@
     <div class="flex gap-2 items-center">
       <label class="text-xs">API</label>
       <input id="apiBase" class="border rounded px-2 py-1 text-sm w-64" value="http://localhost:8000" />
-      <button onclick="refreshState()" class="bg-slate-800 text-white text-sm px-3 py-1 rounded">State</button>
+      <button onclick="onRefreshState()" class="bg-slate-800 text-white text-sm px-3 py-1 rounded">State</button>
     </div>
   </header>
 
   <p class="text-sm text-slate-600 mb-4">Backend: <code>uvicorn backend.main:app</code> from <code>Paytriq-trial/</code>. All calls are <code>fetch()</code> to <code>/api/*</code>. Human gate: outreach only sends with approve ✅.</p>
+  <div id="backendStatus" class="text-sm mb-4 px-3 py-2 rounded bg-slate-200">Checking backend…</div>
 
   <div class="grid md:grid-cols-2 gap-4">
     <!-- STEP 1 -->
@@ -31,14 +32,14 @@
         <input id="evDate" class="border rounded px-2 py-1" value="2026-11-15" />
         <input id="evAud" class="border rounded px-2 py-1 col-span-2" value="tech students, developers" />
       </div>
-      <button onclick="createEvent()" class="mt-2 bg-blue-600 text-white text-sm px-3 py-1.5 rounded">Create event + Discover</button>
+      <button onclick="onCreateEvent()" class="mt-2 bg-blue-600 text-white text-sm px-3 py-1.5 rounded">Create event + Discover</button>
       <div class="text-xs mt-1">event_id: <code id="eventId">—</code></div>
     </section>
 
     <!-- STEP 2 -->
     <section class="bg-white rounded shadow p-4">
       <h2 class="font-bold mb-2">2 · Discovery list (fit-scores)</h2>
-      <button onclick="propose()" class="bg-indigo-600 text-white text-sm px-3 py-1.5 rounded">Generate proposals (A2)</button>
+      <button onclick="onPropose()" class="bg-indigo-600 text-white text-sm px-3 py-1.5 rounded">Generate proposals (A2)</button>
       <div id="brands" class="mt-2 space-y-1 text-sm max-h-56 overflow-auto"></div>
     </section>
 
@@ -53,12 +54,12 @@
       <h2 class="font-bold mb-2">4 · Outreach — approve + send (A3, human gate)</h2>
       <label class="text-sm"><input type="checkbox" id="approve" /> I approve sending (approve=true)</label>
       <div class="flex gap-2 mt-2">
-        <button onclick="sendOutreach()" class="bg-green-600 text-white text-sm px-3 py-1.5 rounded">Send outreach</button>
+        <button onclick="onSendOutreach()" class="bg-green-600 text-white text-sm px-3 py-1.5 rounded">Send outreach</button>
       </div>
       <div class="mt-3 text-sm font-semibold">Simulate sponsor reply (Gmail webhook → A2/A4):</div>
       <div class="flex gap-2 mt-1">
-        <button onclick="simReply('pushback')" class="bg-amber-500 text-white text-sm px-3 py-1.5 rounded">Pushback (“too high”)</button>
-        <button onclick="simReply('yes')" class="bg-emerald-600 text-white text-sm px-3 py-1.5 rounded">Yes (“interested”)</button>
+        <button onclick="onSimReply('pushback')" class="bg-amber-500 text-white text-sm px-3 py-1.5 rounded">Pushback (“too high”)</button>
+        <button onclick="onSimReply('yes')" class="bg-emerald-600 text-white text-sm px-3 py-1.5 rounded">Yes (“interested”)</button>
       </div>
       <div id="outreach" class="text-xs mt-2"></div>
     </section>
@@ -68,17 +69,17 @@
       <h2 class="font-bold mb-2">5 · MoU (A4) + Compliance (A5) + Nudge</h2>
       <div class="flex gap-2 text-sm">
         <input id="mouBrand" class="border rounded px-2 py-1" placeholder="brand e.g. boAt" />
-        <button onclick="makeMou()" class="bg-purple-600 text-white px-3 py-1 rounded">MoU</button>
-        <button onclick="checkCompliance()" class="bg-slate-700 text-white px-3 py-1 rounded">Compliance</button>
+        <button onclick="onMakeMou()" class="bg-purple-600 text-white px-3 py-1 rounded">MoU</button>
+        <button onclick="onCheckCompliance()" class="bg-slate-700 text-white px-3 py-1 rounded">Compliance</button>
       </div>
-      <button onclick="nudge()" class="mt-2 text-sm underline">Send nudge (unapproved-safe re-send attempt)</button>
+      <button onclick="onNudge()" class="mt-2 text-sm underline">Send nudge (unapproved-safe re-send attempt)</button>
       <div id="mou" class="text-xs mt-2"></div>
     </section>
 
     <!-- STEP 6 -->
     <section class="bg-white rounded shadow p-4">
       <h2 class="font-bold mb-2">6 · ROI report + learning (A6)</h2>
-      <button onclick="roi()" class="bg-rose-600 text-white text-sm px-3 py-1.5 rounded">Compute ROI + update learning</button>
+      <button onclick="onRoi()" class="bg-rose-600 text-white text-sm px-3 py-1.5 rounded">Compute ROI + update learning</button>
       <div id="roi" class="text-xs mt-2"></div>
     </section>
   </div>
@@ -92,7 +93,41 @@
 <script>
 const $ = id => document.getElementById(id);
 const api = () => $('apiBase').value.replace(/\/$/, '');
-function show(o){ $('json').textContent = JSON.stringify(o, null, 2); }
+function show(o){ $('json').textContent = JSON.stringify(o, null, 2); if(o && o.error){ toast(o.error); } }
+function toast(msg){
+  let t = document.getElementById('errToast');
+  if(!t){ t = document.createElement('div'); t.id = 'errToast'; t.className = 'fixed top-2 left-1/2 -translate-x-1/2 bg-red-600 text-white text-sm px-4 py-2 rounded shadow z-50'; document.body.appendChild(t); }
+  t.textContent = '⚠ ' + msg; t.style.display = 'block';
+  clearTimeout(t._h); t._h = setTimeout(()=>{ t.style.display = 'none'; }, 6000);
+}
+function setStatus(ok, msg){
+  const el = $('backendStatus'); if(!el) return;
+  el.textContent = msg;
+  el.className = 'text-sm mb-4 px-3 py-2 rounded ' + (ok ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800');
+}
+// If UI is served by the backend itself (/app or /frontend/), same-origin is
+// always correct — override the localhost default so buttons just work.
+(function initApiBase(){
+  try{
+    if(window.location && window.location.origin && window.location.origin.startsWith('http')){
+      $('apiBase').value = window.location.origin;
+    }
+  }catch(e){}
+  checkBackend();
+})();
+async function checkBackend(){
+  const url = api() + '/health';
+  try{
+    const r = await fetch(url);
+    const j = await r.json();
+    if(j && j.status === 'ok') setStatus(true, '✅ Backend connected at ' + api() + ' — follow Steps 1→6 in order.');
+    else setStatus(false, '❌ Backend reachable but /health unexpected: ' + JSON.stringify(j));
+  }catch(e){
+    setStatus(false, '❌ Cannot reach backend at ' + url + '. Start it first:  cd Paytriq-trial  →  python -m uvicorn backend.main:app --port 8000  → then reload this page. (' + e.message + ')');
+  }
+}
+// Re-check whenever user edits the API base
+document.addEventListener('DOMContentLoaded', () => { $('apiBase').addEventListener('change', checkBackend); });
 function needEvent(){ const e = $('eventId').textContent; if(!e || e==='—'){ alert('Create event first (Step 1)'); return null;} return e; }
 
 async function apiFetch(path, body){
@@ -107,7 +142,7 @@ async function apiFetch(path, body){
   }
 }
 
-async function createEvent(){
+async function onCreateEvent(){
   const body = { name: $('evName').value, location: $('evLoc').value, footfall: +$('evFoot').value, date: $('evDate').value, audience: $('evAud').value };
   const j = await apiFetch('/api/event', body); show(j);
   if(j.event){ $('eventId').textContent = j.event.event_id; renderBrands(j.discovery || []); }
@@ -119,7 +154,7 @@ function renderBrands(list){
 }
 function selectedBrands(){ return [...document.querySelectorAll('.brandCk:checked')].map(c => c.value); }
 
-async function propose(){
+async function onPropose(){
   const eid = needEvent(); if(!eid) return;
   const brands = selectedBrands();
   const j = await apiFetch('/api/propose', {event_id: eid, brands}); show(j);
@@ -129,13 +164,13 @@ async function propose(){
   if((j.proposals||[])[0]) $('mouBrand').value = j.proposals[0].brand;
 }
 
-async function sendOutreach(){
+async function onSendOutreach(){
   const eid = needEvent(); if(!eid) return;
   const j = await apiFetch('/api/outreach/send', {event_id: eid, approve: $('approve').checked, brands: selectedBrands()}); show(j);
   $('outreach').innerHTML = (j.error?`<div class="text-red-600">${j.error}</div>`:'') + `<div>sent: ${(j.sent||[]).map(s=>s.brand).join(', ')||'—'}</div>`;
 }
 
-async function simReply(kind){
+async function onSimReply(kind){
   const eid = needEvent(); if(!eid) return;
   const brands = selectedBrands(); const brand = brands[0] || $('mouBrand').value || 'boAt';
   const body = kind === 'pushback'
@@ -147,33 +182,33 @@ async function simReply(kind){
   if(j.mou) $('mou').innerHTML += `<div>MoU ${j.mou.mou_id} · ${j.mou.brand} · Rs ${Number(j.mou.amount_inr).toLocaleString('en-IN')} · file ${j.mou.file||''}</div>`;
 }
 
-async function makeMou(){
+async function onMakeMou(){
   const eid = needEvent(); if(!eid) return;
   const brand = $('mouBrand').value || selectedBrands()[0] || 'boAt';
   const j = await apiFetch('/api/contract/mou', {event_id: eid, brand}); show(j);
   if(j.mou) $('mou').innerHTML += `<div>MoU ${j.mou.mou_id} · ${j.mou.brand} · Rs ${Number(j.mou.amount_inr).toLocaleString('en-IN')} · file ${j.mou.file||''}</div>`;
 }
 
-async function checkCompliance(){
+async function onCheckCompliance(){
   const eid = needEvent(); if(!eid) return;
   const j = await apiFetch('/api/compliance/check', {event_id: eid, brand: $('mouBrand').value||undefined}); show(j);
   $('mou').innerHTML += `<div>Compliance: ${j.passed?'✅ PASS':'❌ FAIL'} score ${j.score} — ${(j.issues||[]).join('; ')||'clean'}</div>`;
 }
 
-async function nudge(){
+async function onNudge(){
   // Nudge = harmless re-check: calls send WITHOUT approve to show the gate holds
   const eid = needEvent(); if(!eid) return;
   const j = await apiFetch('/api/outreach/send', {event_id: eid, approve: false}); show(j);
   $('mou').innerHTML += `<div class="text-slate-500">Nudge: gate held — ${j.error||'no send without approval (expected)'}</div>`;
 }
 
-async function roi(){
+async function onRoi(){
   const eid = needEvent(); if(!eid) return;
   const j = await apiFetch('/api/audit/roi', {event_id: eid}); show(j);
   $('roi').innerHTML = `<div>ROI ${j.roi?.roi} · sponsored Rs ${Number(j.roi?.total_sponsored_inr||0).toLocaleString('en-IN')} · leads ${j.roi?.leads}</div><div class="text-slate-500">learning runs=${j.learning?.runs} avg_roi=${j.learning?.avg_roi}</div>`;
 }
 
-async function refreshState(){
+async function onRefreshState(){
   const eid = $('eventId').textContent;
   const url = api() + '/api/state' + ((eid && eid !== '—') ? ('?event_id=' + eid) : '');
   try{ const r = await fetch(url); show(await r.json()); }catch(e){ show({error:'Cannot reach backend at '+url+'. Run uvicorn backend.main:app --port 8000 ('+e.message+')'}); }

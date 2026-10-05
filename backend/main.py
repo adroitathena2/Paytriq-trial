@@ -10,14 +10,36 @@ from pydantic import BaseModel, Field
 from backend.state import STORE, LEARNING, create_event, get_event, list_events, record_learning
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+import os
 import pathlib
+
+
+def _load_dotenv() -> None:
+    """Load Paytriq-trial/.env without extra deps (so keys just work)."""
+    try:
+        env_path = pathlib.Path(__file__).resolve().parent.parent / ".env"
+        if not env_path.is_file():
+            return
+        for line in env_path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            k, v = line.split("=", 1)
+            k, v = k.strip(), v.strip().strip('"').strip("'")
+            if k and k not in os.environ:
+                os.environ[k] = v
+    except Exception:
+        pass
+
+
+_load_dotenv()
 
 app = FastAPI(title="Paytriq API", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -98,6 +120,19 @@ def root():
 @app.get("/health")
 def health():
     return {"status": "ok", "events": len(STORE)}
+
+
+@app.get("/api/config")
+def api_config():
+    """Show which integrations are live vs mock (no secrets leaked)."""
+    import os as _os
+
+    return {
+        "gemini_live": bool(_os.getenv("GEMINI_API_KEY", "").strip()),
+        "maps_live": bool(_os.getenv("GOOGLE_MAPS_KEY", "").strip()),
+        "gmail_live": bool(_os.getenv("GMAIL_USER", "").strip() and _os.getenv("GMAIL_APP_PASSWORD", "").strip()),
+        "mode": "live" if _os.getenv("GEMINI_API_KEY", "").strip() else "mock-offline",
+    }
 
 
 @app.get("/api/state")
